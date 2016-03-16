@@ -1,6 +1,7 @@
 import os
 import urllib2
 import json
+import subprocess
 import sys
 from urlparse import urljoin
 
@@ -23,14 +24,19 @@ class LookupModule(LookupBase):
 
         request_url = urljoin(url, "v1/%s" % (key))
         try:
-            headers = { 'X-Vault-Token' : token }
-            req = urllib2.Request(request_url, None, headers)
-            response = urllib2.urlopen(req)
+            # when using http (tlsv1.2) connections wrap curl since python <2.7.9 doesnt support tlsv1.2
+            if "https" in url:
+                output = subprocess.Popen(["curl", "-s", "-XGET", "-H", "X-Vault-Token: %s" % token, "%s" % request_url], stdout=subprocess.PIPE).communicate()[0]
+            else:
+                headers = { 'X-Vault-Token' : token }
+                req = urllib2.Request(request_url, None, headers)
+                response = urllib2.urlopen(req)
+                output = response.read()
         except urllib2.HTTPError as e:
             raise AnsibleError('Unable to read %s from vault: %s' % (key, e))
         except:
             raise AnsibleError('Unable to read %s from vault' % key)
 
-        result = json.loads(response.read())
+        result = json.loads(output)
 
         return [result['data']['value']]
