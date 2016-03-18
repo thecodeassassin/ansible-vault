@@ -1,8 +1,8 @@
 import os
 import urllib2
 import json
-import subprocess
 import sys
+import subprocess
 from urlparse import urljoin
 
 from ansible.errors import AnsibleError
@@ -38,5 +38,8 @@ class LookupModule(LookupBase):
             raise AnsibleError('Unable to read %s from vault' % key)
 
         result = json.loads(output)
+
+        if 'data' not in result:
+            raise AnsibleError('Key %s not found in vault' % key)
 
         return [result['data']['value']]
